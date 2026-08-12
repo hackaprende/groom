@@ -1,0 +1,69 @@
+# ── Secrets & credentials ─────────────────────────────
+# NEVER commit these. If one lands in a commit, it stays in git history
+# even after deletion — rotate the key, don't just delete the file.
+*.json
+!package.json
+!package-lock.json
+service-account*.json
+credentials*.json
+client_secret*.json
+token.json
+.env
+.env.*
+!.env.example
+
+# ── Python ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# ── Testing & tooling ─────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ── Dataset & generated images ────────────────────────
+# Tsinghua Dogs lives in Cloud Storage, never in the repo
+data/
+datasets/
+tsinghua*/
+*.zip
+*.zip.*
+*.tar
+*.tar.gz
+
+# Local pipeline output
+output/
+processed/
+rejected/
+tmp/
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png
+!docs/**/*.jpg
+
+# ── Google Cloud ──────────────────────────────────────
+.gcloudignore
+
+# ── OS & editors ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
