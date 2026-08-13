@@ -61,6 +61,11 @@ tmp/
 # ── Google Cloud ──────────────────────────────────────
 .gcloudignore
 
+# ── ADK runtime state ─────────────────────────────────
+# `adk web` writes per-agent session and artifact storage next to the agent.
+# Local chat history, not source.
+.adk/
+
 # ── OS & editors ──────────────────────────────────────
 .DS_Store
 Thumbs.db
