@@ -19,7 +19,7 @@ Given a request like `100 Dalmatian images`, the agent runs a multi-stage pipeli
 2. **Pre-filter** — drops images below resolution and format thresholds
 3. **Deduplicate** — perceptual hashing catches near-identical shots, not just byte-identical files
 4. **Inspect** — Gemini evaluates each surviving image against training-quality criteria
-5. **Process** — crops and resizes to training specification
+5. **Process** — crops to the annotated dog, at native resolution
 6. **File** — writes to the correct breed folder in Google Drive
 7. **Report** — summarizes what was kept, what was rejected, and why
 
@@ -48,7 +48,104 @@ The agent decides what gets rejected. The human decides what gets trained — ev
 
 ## Setup
 
-_Coming soon._
+Requires **Python 3.11 or 3.12**. Do not use 3.14 — several dependencies are not
+reliably tested there.
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+cp .env.example .env    # then fill in your project, bucket and Drive folder
+```
+
+### Credentials
+
+Nothing reads a key file. Locally the agent uses your Application Default
+Credentials; on Cloud Run it uses the attached service account.
+
+**Drive is the exception.** A service account has no Drive storage quota, so it
+cannot upload files at all — the fixes Google suggests (shared drives, OAuth
+delegation) both need Google Workspace. Drive therefore runs as *your* user
+account through a stored OAuth token, created once:
+
+```bash
+python scripts/authorize_drive.py    # opens a browser, writes drive_token.json
+```
+
+That needs an OAuth client from the Cloud console first; the script's docstring
+and [`commands.md`](commands.md) walk through it. The token refreshes itself,
+but expires after 7 days while the consent screen is in Testing mode — re-run
+the script if uploads start failing.
+
+The destination Drive folder must also be shared with the service account's
+email address as an **editor**. An unshared folder reports as *not found*
+rather than as a permission error, which is a confusing way to learn this.
+
+### Run
+
+```bash
+adk run ./src        # terminal
+adk web              # browser UI, pick the "groom" agent
+```
+
+Every stage is importable and runnable on its own, without the agent:
+
+```python
+from src.pipeline import run_pipeline
+from src import report
+
+run = run_pipeline("Alaskan Malamute", 25, "1324-n000004-malamute")
+print(report.render_text(run))
+```
+
+### Deploy
+
+```bash
+adk deploy cloud_run \
+  --project=$GOOGLE_CLOUD_PROJECT \
+  --region=us-central1 \
+  --service_name=groom \
+  --app_name=groom \
+  --with_ui \
+  ./src
+```
+
+Local `.env` values do not travel into the container — set them on the service
+explicitly. See [`commands.md`](commands.md) for the full command reference.
+
+> **Cloud Run region is not the Vertex AI location.** Cloud Run needs a real
+> region (`us-central1`); Gemini 3.5 is served only from `global`.
+
+## Output format
+
+Images are cropped to the annotated `bodybndbox` plus a 10% margin and saved at
+**native resolution and natural aspect ratio** — no resize, no square crop.
+
+A crop whose short side falls below `TRAINING_INPUT_SIZE` (224px, the training
+code's `IMG_SIZE`) is rejected rather than filed, because reaching 224 from
+below means upscaling, which invents detail instead of supplying it. This
+catches what the source pre-filter cannot: a large photo of a small, distant
+dog.
+
+How much it removes depends on `CROP_PADDING_RATIO`, since the margin is what
+lifts a marginal crop over the line — about 12% of otherwise-good candidates at
+the current 0.25. The pipeline absorbs the loss by examining more of the
+folder.
+
+The training code does its own resize, so resizing here would resample twice
+and bake one target resolution into every file. It also used to force
+non-square crops into a square, which meant padding with black bars on roughly
+half of all images; dropping the square requirement removed that entirely.
+
+To go back to fixed-size square output, set `OUTPUT_SIZE` in `src/config.py` to
+an int. Nothing else needs to change.
+
+## Pipeline status
+
+Stages 1, 2, 3, 5, 6 and 7 are implemented. **Stage 4 — Gemini image quality
+inspection — is not yet built**; the orchestration in `src/pipeline.py` marks
+where it slots in, between deduplication and cropping.
 
 ## License
 

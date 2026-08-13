@@ -27,6 +27,73 @@ gcloud config set project groom-todogs
 gcloud config get-value project
 ```
 
+### Drive access — the service account cannot do it
+
+**A service account can never write files to Drive from a personal Google
+account.** It has no Drive storage quota, so it creates folders fine (0 bytes)
+and then fails every upload with:
+
+```
+Service Accounts do not have storage quota. Leverage shared drives, or use OAuth delegation
+```
+
+Both fixes Google names there need Google Workspace. Two dead ends worth
+recording so they are not retried:
+
+```bash
+# DEAD END 1 — you cannot add the Drive scope to a user ADC login.
+# Drive is a *restricted* scope and gcloud's OAuth client is not verified for
+# it, so Google blocks the login outright: "Se bloqueó esta app".
+gcloud auth application-default login --scopes=...auth/drive
+
+# DEAD END 2 — impersonating the service account authenticates fine, but hits
+# the same quota wall, because the identity doing the upload is still the SA.
+gcloud auth application-default login \
+  --impersonate-service-account=groom-agent@groom-todogs.iam.gserviceaccount.com
+```
+
+Drive therefore runs as **your user account**, via a stored OAuth token.
+Everything else — Cloud Storage, Vertex AI — still uses the service account.
+
+Console setup, once:
+
+1. *APIs & Services > OAuth consent screen* — External, publishing status
+   **Testing**, and add your own account under **Test users**
+2. *APIs & Services > Credentials > Create credentials > OAuth client ID* —
+   **Desktop app**, download the JSON as `oauth_client.json` in the project root
+
+Then:
+
+```bash
+python scripts/authorize_drive.py      # opens a browser, writes drive_token.json
+```
+
+`oauth_client.json` and `drive_token.json` are both gitignored. Neither is a
+service account key.
+
+**Tokens expire after 7 days while the consent screen is in Testing mode.** If
+uploads start failing with a refresh error, re-run the script. Publishing the
+app removes the limit but triggers Google's verification review for the Drive
+scope.
+
+### Drive token on Cloud Run
+
+The token file does not travel into the container. Put it in Secret Manager and
+hand it to the service as an environment variable:
+
+```bash
+gcloud secrets create groom-drive-token --data-file=drive_token.json
+gcloud secrets add-iam-policy-binding groom-drive-token \
+  --member="serviceAccount:groom-agent@groom-todogs.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud run services update groom --region=us-central1 \
+  --set-secrets=GOOGLE_DRIVE_TOKEN_JSON=groom-drive-token:latest
+
+# After re-running authorize_drive.py, push the new token as a new version
+gcloud secrets versions add groom-drive-token --data-file=drive_token.json
+```
+
 ### Switching between projects
 
 ```bash
@@ -133,9 +200,9 @@ Note the host has **no region prefix** when using `locations/global`. Regional e
 export GOOGLE_CLOUD_PROJECT="groom-todogs"
 export GOOGLE_CLOUD_LOCATION="global"        # Vertex AI — where the model lives
 export CLOUD_RUN_REGION="us-central1"        # Cloud Run — where the service lives
-export AGENT_PATH="./my_agent"
-export SERVICE_NAME="adk-tutorial"
-export APP_NAME="adk_tutorial_app"
+export AGENT_PATH="./src"
+export SERVICE_NAME="groom"
+export APP_NAME="groom"
 
 # Deploy
 adk deploy cloud_run \
@@ -184,7 +251,11 @@ gcloud run services logs read <service-name> --region=us-central1 --limit=50
 
 **`GOOGLE_GENAI_USE_VERTEXAI` was renamed to `GOOGLE_GENAI_USE_ENTERPRISE`.** ADK moves fast — trust the current docs over anything remembered, including from an AI assistant.
 
-**Drive folders must be shared with the service account's email** (as editor) before the agent can write to them. Enabling the Drive API is not enough.
+**Drive is the one API the service account cannot use.** Service accounts have no Drive storage quota, so uploads fail no matter how the folder is shared. Drive runs as your user account through a stored OAuth token; everything else uses the service account. See *Drive access* above — it also lists the two approaches that look like they should work and don't.
+
+**A Drive folder you cannot see reports as `404 not found`**, not as a permission error. The id looks wrong when access is what's missing.
+
+**Secret Manager is needed after all** — not for an AI Studio API key, but to carry the Drive OAuth token into Cloud Run.
 
 ---
 
