@@ -57,6 +57,10 @@ def prefilter(candidates: list[Candidate]) -> tuple[list[Candidate], list[Reject
     survivors: list[Candidate] = []
     rejections: list[Rejection] = []
 
+    # Build the storage client before any thread exists — see the note in
+    # inspection.inspect(): a cached-but-unbuilt client is a race, not a cache.
+    storage.warm_client()
+
     with ThreadPoolExecutor(max_workers=config.DOWNLOAD_CONCURRENCY) as pool:
         for candidate, rejection in pool.map(_load, candidates):
             if rejection is None:

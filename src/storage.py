@@ -37,6 +37,16 @@ def _client() -> storage.Client:
         raise StorageError(f"Could not create a Cloud Storage client: {exc}") from exc
 
 
+def warm_client() -> None:
+    """Build the client on the calling thread, before any pool is started.
+
+    `lru_cache` protects its cache but not the call that populates it, so
+    concurrent first-callers each build a client and all but one is discarded
+    and closed — leaving whichever thread held a discarded one to fail.
+    """
+    _client()
+
+
 @lru_cache(maxsize=1)
 def list_breed_folders() -> tuple[str, ...]:
     """Every breed folder name under `low-resolution/`.
