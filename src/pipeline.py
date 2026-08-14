@@ -15,7 +15,7 @@ import hashlib
 import logging
 import math
 
-from src import config, drive, prefilter, processing, storage
+from src import config, drive, inspection, prefilter, processing, storage
 from src.dedup import Deduplicator
 from src.models import (
     STAGE_PROCESSING,
@@ -193,21 +193,12 @@ def _process_and_file(
     Returns `(filed, fallback_crops)`, counting only images that actually
     reached Drive.
     """
-    # ─────────────────────────────────────────────────────────────────────────
-    # STAGE 4 — Gemini image quality inspection. NOT IMPLEMENTED IN THIS BLOCK.
-    #
-    # The next block inserts it exactly here: it takes `survivors` (each with
-    # `image_bytes` populated), sends each image to Gemini, and returns the
-    # images worth training on plus a `Rejection` per image it turns down,
-    # tagged with a new "inspection" stage string.
-    #
-    #   survivors, rejections = inspection.inspect(survivors, breed)
-    #   report.rejections.extend(rejections)
-    #
-    # Nothing above or below needs to change: the report groups rejection
-    # stages generically, and the top-up loop already handles a stage that
-    # removes candidates.
-    # ─────────────────────────────────────────────────────────────────────────
+    # Stage 4 — the judgement a person would otherwise make by hand, several
+    # hundred times per breed. Runs on the full image, before cropping: the
+    # body box frames a single dog, so cropping first would hide the second and
+    # third dog in the frame, which is one of the things this stage looks for.
+    survivors, rejections = inspection.inspect(survivors, report.breed_requested)
+    report.rejections.extend(rejections)
 
     processed, processing_failures = processing.process_all(survivors, folder)
     report.rejections.extend(

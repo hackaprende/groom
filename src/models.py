@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 # adds STAGE_INSPECTION without touching any existing signature.
 STAGE_PREFILTER = "prefilter"
 STAGE_DEDUP = "dedup"
+STAGE_INSPECTION = "inspection"
 STAGE_PROCESSING = "processing"
 STAGE_UPLOAD = "upload"
 

@@ -7,10 +7,16 @@ written inline in a stage module.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Anchor to the project root rather than the working directory. `load_dotenv()`
+# with no argument searches from wherever the process happens to be started,
+# so a script run from another folder would silently see no configuration at
+# all and fail on a missing environment variable instead.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 # ── Pipeline tuning ───────────────────────────────────────────────────────────
 
@@ -82,6 +88,33 @@ IMAGE_EXTENSIONS = (".jpg", ".jpeg")
 # Served only from the `global` Vertex location — see GOOGLE_CLOUD_LOCATION below.
 BREED_MATCH_MODEL = "gemini-3.5-flash"
 AGENT_MODEL = "gemini-3.5-flash"
+INSPECTION_MODEL = "gemini-3.5-flash"
+
+# ── Image inspection (stage 4) ────────────────────────────────────────────────
+
+# One model call per candidate, so this stage dominates both the cost and the
+# wall-clock time of a run. The three knobs below are the ones that matter.
+
+# Images are sent at low media resolution. The judgements being made — is there
+# a dog, how many, is it sharp, does the background look like a phone snapshot —
+# do not need fine detail, and resolution is billed.
+INSPECTION_MEDIA_RESOLUTION = "MEDIA_RESOLUTION_LOW"
+
+# Longest edge, in px, that an image is downscaled to before being sent. Cuts
+# upload bytes; the model resamples to its own tile size regardless.
+INSPECTION_MAX_EDGE = 512
+
+# Calls run in parallel. Kept modest to stay clear of Vertex rate limits, which
+# reject rather than queue.
+INSPECTION_CONCURRENCY = 8
+
+# Transient failures are retried before the candidate is given up on.
+INSPECTION_MAX_RETRIES = 2
+
+# An image whose inspection fails after retries is rejected rather than let
+# through. Curation should under-deliver with an explanation before it admits
+# something nothing ever looked at.
+INSPECTION_REJECT_ON_ERROR = True
 
 # ── Environment ───────────────────────────────────────────────────────────────
 
@@ -127,8 +160,11 @@ DEFAULT_OAUTH_CLIENT_PATH = "oauth_client.json"
 
 
 def drive_token_path() -> str:
-    """Local path to the stored Drive token."""
-    return os.environ.get(DRIVE_TOKEN_PATH_ENV, DEFAULT_DRIVE_TOKEN_PATH)
+    """Local path to the stored Drive token, resolved against the project root."""
+    override = os.environ.get(DRIVE_TOKEN_PATH_ENV)
+    if override:
+        return override
+    return str(PROJECT_ROOT / DEFAULT_DRIVE_TOKEN_PATH)
 
 
 def drive_token_json() -> str | None:

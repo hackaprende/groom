@@ -12,6 +12,7 @@ from collections import Counter
 
 from src.models import (
     STAGE_DEDUP,
+    STAGE_INSPECTION,
     STAGE_PREFILTER,
     STAGE_PROCESSING,
     STAGE_UPLOAD,
@@ -24,11 +25,18 @@ from src.models import (
 _STAGE_LABELS = {
     STAGE_PREFILTER: "in pre-filter",
     STAGE_DEDUP: "as near-duplicates",
+    STAGE_INSPECTION: "on inspection",
     STAGE_PROCESSING: "during processing",
     STAGE_UPLOAD: "during upload",
 }
 
-_STAGE_ORDER = [STAGE_PREFILTER, STAGE_DEDUP, STAGE_PROCESSING, STAGE_UPLOAD]
+_STAGE_ORDER = [
+    STAGE_PREFILTER,
+    STAGE_DEDUP,
+    STAGE_INSPECTION,
+    STAGE_PROCESSING,
+    STAGE_UPLOAD,
+]
 
 
 def _reason_key(reason: str) -> str:
