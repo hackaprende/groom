@@ -1,25 +1,5 @@
-# Python 3.11 or 3.12. Do not target 3.14 — several of these are not reliably
-# tested there. Versions are pinned to what this block was built and verified
-# against.
-
-# Agent framework and Gemini access (google-genai arrives via google-adk, but is
-# pinned explicitly because breed_match.py imports it directly).
-google-adk==2.6.3
-google-genai==2.18.0
-
-# Source corpus and output destination.
-google-cloud-storage==3.13.1
-google-api-python-client==2.198.0
-google-auth==2.56.3
-
-# Drive runs as the user, not the service account (service accounts have no
-# Drive storage quota). This drives the one-time browser flow in
-# scripts/authorize_drive.py.
-google-auth-oauthlib==1.4.0
-
-# Image handling. ImageHash pulls in numpy and scipy.
-pillow==12.3.0
-ImageHash==4.3.2
-
-# Local .env loading; a no-op in Cloud Run, where env vars are already set.
-python-dotenv==1.2.2
+# The real dependency list lives in src/requirements.txt, because
+# `adk deploy cloud_run ./src` only installs a requirements.txt found inside
+# the agent directory. Keeping one canonical file there and pointing at it
+# from here stops the two from drifting apart.
+-r src/requirements.txt
