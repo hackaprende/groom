@@ -240,6 +240,32 @@ breeds — the value here is catching the images that would silently teach the
 model the wrong thing. On an uncurated web scrape the quality criteria would do
 far more work.
 
+## Data source and attribution
+
+The source corpus is **Tsinghua Dogs**, published by Tsinghua University: 130
+dog breeds with per-image bounding box annotations for body and head.
+
+The authors distribute it publicly for research and ask that the paper be cited.
+They publish no licence text, so no broader permission should be assumed from
+its availability. This project does not redistribute the dataset — the images
+live in a private Cloud Storage bucket, and only derived crops are written to
+the operator's own Drive. Anyone wanting the corpus should get it from the
+authors directly at https://cg.cs.tsinghua.edu.cn/ThuDogs/.
+
+```bibtex
+@article{Zou2020ThuDogs,
+  title={A new dataset of dog breed images and a benchmark for fine-grained classification},
+  author={Zou, Ding-Nan and Zhang, Song-Hai and Mu, Tai-Jiang and Zhang, Min},
+  journal={Computational Visual Media},
+  year={2020},
+  url={https://doi.org/10.1007/s41095-020-0184-6}
+}
+```
+
+Groom is corpus-agnostic in shape: any source with images and Pascal-VOC-style
+bounding boxes fits the same pipeline.
+
 ## License
 
-MIT
+MIT — this covers Groom's own source code, and nothing about the dataset it
+reads.
