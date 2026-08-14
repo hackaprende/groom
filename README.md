@@ -154,9 +154,23 @@ and [`commands.md`](commands.md) walk through it. The token refreshes itself,
 but expires after 7 days while the consent screen is in Testing mode — re-run
 the script if uploads start failing.
 
-The destination Drive folder must also be shared with the service account's
-email address as an **editor**. An unshared folder reports as *not found*
+`DRIVE_OUTPUT_FOLDER_ID` must be a folder the authorized account can reach —
+normally one you own. A folder that account cannot see reports as *not found*
 rather than as a permission error, which is a confusing way to learn this.
+
+### The corpus
+
+Groom reads from your own bucket; there is no shared one. Download
+[Tsinghua Dogs](https://cg.cs.tsinghua.edu.cn/ThuDogs/) from the authors and
+upload both trees, keeping the folder names as published:
+
+```bash
+gcloud storage cp -r "low-resolution/<breed-folder>"  gs://$GCS_BUCKET_NAME/low-resolution/
+gcloud storage cp -r "low-annotations/<breed-folder>" gs://$GCS_BUCKET_NAME/low-annotations/
+```
+
+One breed folder is enough to run everything end to end. Any corpus of images
+with Pascal-VOC bounding boxes works — nothing is specific to this dataset.
 
 ### Run
 
@@ -174,6 +188,40 @@ from src import report
 run = run_pipeline("Alaskan Malamute", 25, "1324-n000004-malamute")
 print(report.render_text(run))
 ```
+
+### Verifying it works
+
+There is no test suite. These checks are what the behaviour was actually
+verified against, and each one exercises a different guarantee.
+
+**It refuses rather than guesses.** In `adk web`, ask for a breed the corpus
+does not contain (`"I need 10 Poodle images"`). It must say the breed is absent
+and offer what is available — never substitute a similar breed. Ask for more
+than `MAX_IMAGES_PER_REQUEST` and it must reject the request, not trim it.
+
+**Inspection actually rejects.** Real corpora are cleaner than you expect, so a
+working filter and a dead one can produce identical counts. Feed it constructed
+failures instead:
+
+```python
+from src.inspection import inspect_image
+inspect_image(open("blurred.jpg", "rb").read(), "Siberian Husky")
+# -> keep=False, category="unusable quality"
+```
+
+A heavily blurred image, a near-black one, a two-dog composite and a crop of
+empty background should each come back rejected with the matching category.
+
+**The counts reconcile.** For any run,
+`kept + len(rejections) + unused_surplus == candidates_examined`. If that stops
+holding, a stage is dropping candidates silently.
+
+**The crops are right.** Open several outputs. The dog should be whole, not cut
+at the edges, not distorted, with margin around it, and the short side never
+below `TRAINING_INPUT_SIZE`.
+
+**Re-running is safe.** Issue the same request twice. The Drive folder must end
+up with the same number of files, not double.
 
 ### Deploy
 
