@@ -18,9 +18,27 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
 
+
+def _env_int(name: str, default: int) -> int:
+    """An integer setting that the environment may lower or raise."""
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        raise RuntimeError(f"{name} must be an integer, got {raw!r}") from None
+
+
 # ── Pipeline tuning ───────────────────────────────────────────────────────────
 
-MAX_IMAGES_PER_REQUEST = 200  # hard ceiling — reject requests above this
+# Hard ceiling — requests above this are rejected, never quietly trimmed.
+#
+# Overridable by environment so a publicly reachable deployment can run at a
+# much lower cap than the design limit. The service is open during judging and
+# each image costs a Gemini call and a write to the operator's Drive; 200 is the
+# ceiling the pipeline is built for, not the one a stranger should be handed.
+MAX_IMAGES_PER_REQUEST = _env_int("MAX_IMAGES_PER_REQUEST", 200)
 CROP_PADDING_RATIO = 0.25 # 25% margin around bodybndbox
 
 # Output resolution. `None` means "save the crop at its native size and aspect
