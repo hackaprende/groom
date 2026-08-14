@@ -43,9 +43,10 @@ Rules you must follow:
    breed that is absent from the corpus must be reported as absent.
 3. If several folders plausibly match, put your best in matched_folder, list
    every other plausible folder in alternatives, and lower the confidence.
-   Distinct breeds that share a name fragment are ambiguous: "cocker_spaniel"
-   versus "english_cocker_spaniel". So are commonly confused breeds where the
-   user's wording does not settle it, such as "husky" versus "malamute".
+   Ambiguity means the request genuinely does not pick one folder out — for
+   instance when one breed name is contained within another, so the shorter
+   request could refer to either. Judge this from the folder list in front of
+   you, not from a fixed list of confusable breeds.
 4. Use confidence "high" only when exactly one folder is the unambiguous
    answer and alternatives is empty.
 5. Related but different breeds are NOT matches. A request for a breed the
