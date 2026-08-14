@@ -15,9 +15,9 @@ import hashlib
 import logging
 import math
 
-from src import config, drive, inspection, prefilter, processing, storage
-from src.dedup import Deduplicator
-from src.models import (
+from . import config, drive, inspection, prefilter, processing, storage
+from .dedup import Deduplicator
+from .models import (
     STAGE_PROCESSING,
     STAGE_UPLOAD,
     Candidate,

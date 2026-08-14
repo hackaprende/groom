@@ -18,8 +18,8 @@ import logging
 import imagehash
 from PIL import Image
 
-from src import config
-from src.models import STAGE_DEDUP, Candidate, Rejection
+from . import config
+from .models import STAGE_DEDUP, Candidate, Rejection
 
 logger = logging.getLogger(__name__)
 

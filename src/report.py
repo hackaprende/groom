@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from src.models import (
+from .models import (
     STAGE_DEDUP,
     STAGE_INSPECTION,
     STAGE_PREFILTER,

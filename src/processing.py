@@ -27,8 +27,8 @@ import logging
 
 from PIL import Image
 
-from src import annotations, config, storage
-from src.models import BoundingBox, Candidate, ProcessedImage
+from . import annotations, config, storage
+from .models import BoundingBox, Candidate, ProcessedImage
 
 logger = logging.getLogger(__name__)
 

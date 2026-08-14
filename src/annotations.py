@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import xml.etree.ElementTree as ET
 
-from src.models import BoundingBox
+from .models import BoundingBox
 
 logger = logging.getLogger(__name__)
 

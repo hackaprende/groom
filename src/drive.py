@@ -32,8 +32,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
 
-from src import config
-from src.models import ProcessedImage
+from . import config
+from .models import ProcessedImage
 
 logger = logging.getLogger(__name__)
 

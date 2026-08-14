@@ -18,8 +18,8 @@ from functools import lru_cache
 from google.api_core import exceptions as gcp_exceptions
 from google.cloud import storage
 
-from src import config
-from src.models import Candidate
+from . import config
+from .models import Candidate
 
 logger = logging.getLogger(__name__)
 

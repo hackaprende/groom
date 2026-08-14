@@ -14,8 +14,8 @@ from typing import Any
 
 from google.adk.agents import Agent
 
-from src import breed_match, config, drive, report, storage
-from src.pipeline import RequestError, run_pipeline, validate_request
+from . import breed_match, config, drive, report, storage
+from .pipeline import RequestError, run_pipeline, validate_request
 
 logger = logging.getLogger(__name__)
 

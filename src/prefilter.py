@@ -16,8 +16,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image, UnidentifiedImageError
 
-from src import config, storage
-from src.models import STAGE_PREFILTER, Candidate, Rejection
+from . import config, storage
+from .models import STAGE_PREFILTER, Candidate, Rejection
 
 logger = logging.getLogger(__name__)
 

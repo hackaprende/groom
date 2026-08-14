@@ -27,8 +27,8 @@ from google.genai import Client, types
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from src import config
-from src.models import STAGE_INSPECTION, Candidate, Rejection
+from . import config
+from .models import STAGE_INSPECTION, Candidate, Rejection
 
 logger = logging.getLogger(__name__)
 

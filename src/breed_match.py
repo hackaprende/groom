@@ -19,8 +19,8 @@ from functools import lru_cache
 from google.genai import Client, types
 from pydantic import BaseModel, Field
 
-from src import config, storage
-from src.models import BreedMatch
+from . import config, storage
+from .models import BreedMatch
 
 logger = logging.getLogger(__name__)
 
