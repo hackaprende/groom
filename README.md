@@ -33,14 +33,90 @@ Given a request like `100 Dalmatian images`, the agent runs a multi-stage pipeli
 
 The agent decides what gets rejected. The human decides what gets trained — every rejection is logged with its reason.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    User(["User"])
+
+    subgraph Run["Cloud Run - us-central1"]
+        Agent["ADK Agent<br/>groom"]
+        Pipe["Pipeline<br/>stages 2-7"]
+    end
+
+    subgraph Vertex["Vertex AI - location global"]
+        Match["Gemini 3.5 Flash<br/>breed matching<br/>text, structured output"]
+        Insp["Gemini 3.5 Flash<br/>image inspection<br/>multimodal"]
+    end
+
+    GCS[("Cloud Storage<br/>low-resolution/<br/>low-annotations/")]
+    Drive[("Google Drive<br/>breed subfolder")]
+    SM[("Secret Manager<br/>Drive OAuth token")]
+
+    User -->|"breed + count"| Agent
+    Agent -->|"stage 1"| Match
+    Match -->|"folder, none, or ambiguous"| Agent
+    Agent -->|"confirmed folder"| Pipe
+    Pipe -->|"stages 2,3,5: read images<br/>and annotations"| GCS
+    Pipe -->|"stage 4: one call per candidate"| Insp
+    Pipe -->|"stage 6: upload crops"| Drive
+    SM -.->|"injected as env var"| Pipe
+    Agent -->|"stage 7: report"| User
+```
+
+**Two identities, on purpose.** Cloud Storage and Vertex AI are reached with the
+Cloud Run **service account**. Drive is reached as the **user**, through an
+OAuth token from Secret Manager — a service account has no Drive storage quota
+and cannot upload files at all. No service account key file exists anywhere in
+the project.
+
+### Pipeline flow
+
+```mermaid
+flowchart TD
+    Req["Request: breed + count"] --> Gate{"count within 1-200?"}
+    Gate -->|"no"| S1["STOP: reject the request<br/>never silently clamp"]
+    Gate -->|"yes"| Match["Stage 1: Gemini matches the<br/>breed name to a corpus folder"]
+
+    Match --> Dec{"match result"}
+    Dec -->|"no match"| S2["STOP: breed absent from corpus<br/>never substitute a similar breed"]
+    Dec -->|"ambiguous"| S3["STOP: ask which folder was meant<br/>never pick unilaterally"]
+    Dec -->|"clear match"| Batch
+
+    Batch["Fetch next batch<br/>sampled across the whole folder"]
+    Batch --> P2["Stage 2: pre-filter<br/>resolution, decodability"]
+    P2 --> P3["Stage 3: dedup<br/>perceptual hash"]
+    P3 --> P4["Stage 4: Gemini inspects<br/>dog, breed, count, quality, realism"]
+    P4 --> P5["Stage 5: crop to the dog<br/>native resolution"]
+    P5 --> P6["Stage 6: upload to Drive"]
+    P6 --> Enough{"enough images?"}
+    Enough -->|"no, corpus remains"| Batch
+    Enough -->|"yes, or corpus exhausted"| P7["Stage 7: report"]
+
+    P2 -.->|"rejected"| R[("Rejection ledger<br/>filename, stage, reason")]
+    P3 -.->|"rejected"| R
+    P4 -.->|"rejected"| R
+    P5 -.->|"rejected"| R
+    R -.-> P7
+```
+
+Three of the boxes above are **stops**, not errors. Refusing an out-of-range
+count, an absent breed, or an ambiguous one is the designed behaviour: a wrong
+breed silently poisons a training set and nothing downstream can detect it.
+
+Rejections are never discarded — every one carries its filename, the stage that
+turned it down, and why, and the report groups them by stage and reason so the
+counts reconcile exactly against candidates examined.
+
 ## Stack
 
-- **Gemini** via Vertex AI — multimodal image inspection
-- **Google ADK** — agent orchestration
-- **Cloud Run** — autonomous background execution
+- **Gemini 3.5 Flash** via Vertex AI — breed matching and multimodal image inspection
+- **Google ADK** — agent orchestration and tool registration
+- **Cloud Run** — deployed service
 - **Cloud Storage** — source image corpus
 - **Google Drive API** — output destination
-- **Python**
+- **Secret Manager** — Drive OAuth token for the deployed service
+- **Python 3.12**, Pillow, ImageHash
 
 ## Status
 
