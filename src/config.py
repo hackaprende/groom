@@ -126,6 +126,17 @@ INSPECTION_MAX_EDGE = 512
 # reject rather than queue.
 INSPECTION_CONCURRENCY = 8
 
+# Reasoning effort for inspection. Thinking tokens are billed as *output*, and
+# they dominated the bill before this was set: measured at 247 thinking tokens
+# against 49 of actual answer per image, so 83% of output spend went on
+# deliberation for a perception task that does not need it.
+#
+# MINIMAL brings output from ~296 to ~33 tokens per image, an 89% cut, with no
+# change in verdicts across the full set of criteria — blurred, too dark, no
+# dog, several dogs, wrong breed and a clean keep were all still judged
+# correctly. Raise it only with a measured reason.
+INSPECTION_THINKING_LEVEL = "MINIMAL"
+
 # Transient failures are retried before the candidate is given up on.
 INSPECTION_MAX_RETRIES = 2
 

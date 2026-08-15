@@ -175,6 +175,11 @@ def inspect_image(image_bytes: bytes, breed: str) -> ImageVerdict:
                     temperature=0.0,
                     response_mime_type="application/json",
                     response_schema=ImageVerdict,
+                    # Thinking tokens bill as output and dominated the cost
+                    # until this was capped — see INSPECTION_THINKING_LEVEL.
+                    thinking_config=types.ThinkingConfig(
+                        thinking_level=config.INSPECTION_THINKING_LEVEL
+                    ),
                 ),
             )
             parsed = response.parsed
