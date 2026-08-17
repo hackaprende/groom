@@ -120,7 +120,26 @@ counts reconcile exactly against candidates examined.
 
 ## Status
 
-🚧 In active development for the hackathon submission period (August 2026).
+All seven stages are built and verified end to end, deployed on Cloud Run.
+Built for the hackathon submission period, August 2026.
+
+### Next
+
+- **Remember what it has judged.** Write every verdict to a manifest beside the
+  images, so a run can process only what it has never seen — never re-inspecting
+  (or re-paying for) a rejected image, and resuming instead of restarting when it
+  dies partway. Deliberately not by upload timestamp: a date says when an image
+  arrived, not whether it was judged, and it lies in exactly the cases that
+  matter. With that in place, Cloud Scheduler can trigger runs periodically over
+  whatever is new.
+
+- **Ingest the photos Todogs users take.** They sit in Firebase Storage and are
+  exactly the distribution the model is deployed into. They also arrive labelled
+  by the classifier itself, so training on them reinforces its own errors while
+  the metrics improve — it needs a quarantined set, Gemini asked cold without
+  seeing what the classifier guessed, and a held-out validation set that never
+  receives auto-labelled data. The disagreements are the valuable part: where the
+  classifier and Gemini differ is a map of where the model actually fails.
 
 ## Setup
 
