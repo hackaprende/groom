@@ -1,0 +1,4 @@
+# Test-only dependencies. Deliberately kept out of src/requirements.txt so the
+# deployed container does not carry them.
+-r requirements.txt
+pytest==9.1.1

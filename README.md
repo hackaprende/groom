@@ -191,8 +191,19 @@ print(report.render_text(run))
 
 ### Verifying it works
 
-There is no test suite. These checks are what the behaviour was actually
-verified against, and each one exercises a different guarantee.
+```bash
+pip install -r requirements-dev.txt
+python -m pytest        # 80 tests, ~3s, no cloud calls
+```
+
+The suite covers crop geometry, the minimum-crop gate, annotation parsing,
+deduplication against recompressed and resized copies, the report's
+reconciliation, sampling determinism, and the breed matcher's guard against
+folders it invented. It is deliberately offline — an inspection call costs money,
+so the tests must never be what spends it.
+
+These further checks need the live services, and are what the behaviour was
+actually verified against:
 
 **It refuses rather than guesses.** In `adk web`, ask for a breed the corpus
 does not contain (`"I need 10 Poodle images"`). It must say the breed is absent

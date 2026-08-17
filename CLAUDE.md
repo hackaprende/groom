@@ -36,10 +36,16 @@ Every stage is importable and runnable on its own — `prefilter.prefilter()`,
 `dedup.deduplicate()`, `inspection.inspect()`, `processing.process_candidate()`,
 `breed_match.match_breed(breed, folders)` (pass `folders` to skip GCS).
 
-**There is no test suite.** Verification has been done by running stages against
-the live bucket and inspecting the output. When changing image handling, check
-the result visually and against constructed failure cases — see "Verification"
-below.
+Tests run offline and never call Gemini, Cloud Storage or Drive:
+
+```bash
+python -m pytest              # 80 tests, ~3s
+python -m pytest tests/test_processing.py -v
+```
+
+Keep it that way. An inspection call costs money, so the suite must never be the
+thing that spends it — stub the clients instead. Behaviour that genuinely needs
+the live services is verified by hand; see "Verification" below.
 
 ## Architecture
 
