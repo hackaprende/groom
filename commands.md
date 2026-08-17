@@ -218,15 +218,59 @@ adk deploy cloud_run \
 
 ### Environment variables on the deployed service
 
-Local `.env` values do **not** travel into the container. Set them explicitly:
+**`adk deploy` wipes every environment variable, the secret and the service
+account.** Every redeploy of the image needs this block reapplied, or the service
+comes up with no configuration and no Drive token and fails at the first
+request. Run it as one command so it lands in a single revision:
 
 ```bash
-gcloud run services update adk-tutorial \
-  --region=us-central1 \
-  --set-env-vars=GOOGLE_GENAI_USE_ENTERPRISE=1,GOOGLE_CLOUD_PROJECT=groom-todogs,GOOGLE_CLOUD_LOCATION=global
+gcloud run services update groom --region=us-central1 \
+  --service-account=groom-agent@groom-todogs.iam.gserviceaccount.com \
+  --max-instances=2 \
+  --set-env-vars=GOOGLE_GENAI_USE_ENTERPRISE=1,GOOGLE_CLOUD_PROJECT=groom-todogs,GOOGLE_CLOUD_LOCATION=global,GCS_BUCKET_NAME=groom-todogs-tsinghua,DRIVE_OUTPUT_FOLDER_ID=1SqHiDKAWYOmtXP78QMDj_h-ixpugm6k8,MAX_IMAGES_PER_REQUEST=15 \
+  --set-secrets=GOOGLE_DRIVE_TOKEN_JSON=groom-drive-token:latest
 ```
 
 This creates a new revision and routes traffic to it. No redeploy needed.
+
+`MAX_IMAGES_PER_REQUEST` overrides the 200 in `config.py`. The code keeps the
+design ceiling; the deployed service runs lower because it is publicly reachable
+and every image costs a Gemini call and a write to a personal Drive.
+
+Check what is actually set:
+
+```bash
+gcloud run services describe groom --region=us-central1 \
+  --format="value(spec.template.spec.containers[0].env)" | tr ';' '\n'
+```
+
+### Public access, on and off
+
+Private by default — the browser gets `403 Forbidden`. Open it only while it has
+to be reachable (recording, judging) and close it afterwards.
+
+```bash
+# Open
+gcloud run services add-iam-policy-binding groom --region=us-central1 \
+  --member="allUsers" --role="roles/run.invoker"
+
+# Close
+gcloud run services remove-iam-policy-binding groom --region=us-central1 \
+  --member="allUsers" --role="roles/run.invoker"
+
+# Which is it right now?
+gcloud run services get-iam-policy groom --region=us-central1 | grep -q allUsers \
+  && echo public || echo private
+```
+
+Verify from outside, unauthenticated — `200` means open, `403` means not:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -L https://groom-717368070959.us-central1.run.app/
+```
+
+To check the service is alive **without spending anything**, ask for more images
+than the ceiling. It is rejected at validation and never reaches Gemini.
 
 ---
 
@@ -241,11 +285,51 @@ gcloud run services logs read <service-name> --region=us-central1 --limit=50
 
 ---
 
+## Git remote
+
+This repo pushes through an SSH alias, not `github.com` directly:
+
+```bash
+git remote -v            # git@github-hackaprende:hackaprende/groom.git
+```
+
+Two GitHub accounts share this machine and an SSH key can only belong to one.
+The default `github.com` host resolves to the other account's key, and the push
+is denied with *"Permission to hackaprende/groom.git denied to ElHanSolo"*. The
+alias in `~/.ssh/config` picks the right key.
+
+```bash
+# Check which account a host authenticates as
+ssh -T git@github-hackaprende          # -> Hi hackaprende!
+ssh -T git@github.com                  # -> Hi ElHanSolo!
+
+# Clone another hackaprende repo
+git clone git@github-hackaprende:hackaprende/<repo>.git
+```
+
+---
+
 ## Notes worth remembering
 
 **Cloud Run region ≠ Vertex AI location.** Cloud Run requires a real physical region and rejects `global` outright. The newest Gemini models are served *only* from `global`. Every 404 during setup traced back to conflating these two.
 
 **A Vertex `404 NOT_FOUND` is ambiguous.** The same message covers a wrong model name, missing project access, and a model unavailable in that region. Test with `curl` before chasing model identifiers.
+
+**`adk deploy` resets the service configuration.** Environment variables, the
+mounted secret and the service account are all wiped on every image redeploy.
+Reapply the block under *Environment variables* or the agent comes up unable to
+reach anything.
+
+**`adk deploy` only installs a `requirements.txt` found inside the agent
+directory**, not the project root — `os.path.join(agent_src_path, 'requirements.txt')`.
+The canonical list lives in `src/requirements.txt`; the root file points at it
+with `-r`. A container built without it fails at import with *"cannot import name
+'storage' from 'google.cloud'"*.
+
+**Intra-package imports must be relative.** `adk deploy` copies the agent folder
+into the image under the app name, so `src` does not exist there and
+`from src.agent import ...` raises `ModuleNotFoundError`. Absolute imports only
+ever worked locally because the project root happened to be on `sys.path`.
 
 **Secret Manager is for the AI Studio API key path.** On the Vertex + service account path there is no key to store. Skip those steps in the ADK docs.
 
